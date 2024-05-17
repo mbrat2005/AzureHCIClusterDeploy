@@ -65,7 +65,7 @@ New-HciAdObjectsPreCreation  -AzureStackLCMUserCredential $deployUserCred -AsHci
 # initialize arc on hci nodes
 log "Initializing Azure Arc on HCI nodes..."
 $cred = [pscredential]::new('administrator', (ConvertTo-SecureString -AsPlainText -Force $adminPw))
-$sessions = New-PSSession -VMName hcinode01, hcinode02 -Credential $cred
+$sessions = New-PSSession -VMName (Get-VM).Name -Credential $cred
 
 ## test node internet connection - required for Azure Arc initialization
 $testNodeInternetConnection = Invoke-Command $sessions[0] {

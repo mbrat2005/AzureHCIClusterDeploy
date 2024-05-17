@@ -1,4 +1,14 @@
+[CmdletBinding()]
+param (
+    [Parameter()]
+    [string]
+    $hciVHDXDownloadURL,
 
+    [Parameter()]
+    [ValidateRange(1, 16)]
+    [int]
+    $hciNodeCount
+)
 Function log {
     Param (
         [string]$message,
@@ -18,14 +28,15 @@ $ErrorActionPreference = 'Stop'
 # download HCI VHDX
 log "Downloading HCI VHDX..."
 mkdir c:\ISOs
-If (! (Test-Path c:\ISOs\hci2311.vhdx)) {
-    [System.Net.WebClient]::new().DownloadFile('https://software-static.download.prss.microsoft.com/dbazure/888969d5-f34g-4e03-ac9d-1f9786c66749/25398.469.amd64fre.zn_release_svc_refresh.231004-1141_server_serverazurestackhcicor_en-us.vhdx', 'c:\isos\hci2311.vhdx')
+If (! (Test-Path c:\ISOs\hci_os.vhdx)) {
+    [System.Net.WebClient]::new().DownloadFile($hciVHDXDownloadURL, 'c:\isos\hci_os.vhdx')
 }
 
 # create mount point directories on C:\
 log "Creating mount points..."
-mkdir c:\diskmounts\hcinode01
-mkdir c:\diskmounts\hcinode02
+For ($i = 0; $i -lt $hciNodeCount; $i++) {
+    mkdir "c:\diskmounts\hcinode$($i + 1)"
+}
 
 # format and mount disks
 log "Formatting and mounting disks..."
@@ -37,11 +48,14 @@ New-Partition -UseMaximumSize -AssignDriveLetter:$false |
 Format-Volume -FileSystem NTFS | 
 Get-Partition | 
 Where-Object { $_.type -ne 'Reserved' } | 
-ForEach-Object { $count++; mountvol c:\diskMounts\HCINode0$count $_.accesspaths[0] }
+ForEach-Object { $count++; mountvol c:\diskMounts\HCINode$count $_.accesspaths[0] }
 
 log "Copying VHDX to mount points..."
-if (! (Test-Path -Path 'c:\diskmounts\hcinode01\hci2311.vhdx')) { Copy-Item -Path c:\isos\hci2311.vhdx -Destination c:\diskmounts\hcinode01 }
-if (! (Test-Path -Path 'c:\diskmounts\hcinode02\hci2311.vhdx')) { Copy-Item -Path c:\isos\hci2311.vhdx -Destination c:\diskmounts\hcinode02 }
+For ($i = 0; $i -lt $hciNodeCount; $i++) {
+    If (!(Test-Path -Path "c:\diskmounts\hcinode$($i + 1)\hci_os.vhdx")) {
+        Copy-Item -Path c:\isos\hci_os.vhdx -Destination "c:\diskmounts\hcinode$($i + 1)"
+    }
+}
 
 # install RRAS configure for routing
 log "Installing RRAS and configuring for routing..."

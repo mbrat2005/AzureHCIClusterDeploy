@@ -6,7 +6,11 @@ param (
 
     [Parameter()]
     [string]
-    $adminPw
+    $adminPw,
+
+    [Parameter()]
+    [int]
+    $hciNodeCount
 )
 
 Function log {
@@ -114,8 +118,12 @@ Set-DhcpServerv4OptionValue -ScopeId 172.20.0.0 -DnsDomain hci.local -DnsServer 
 # create HCI node VMs
 log "Creating HCI node VMs..."
 $existingVMs = Get-VM
-If ($existingVMs.name -notcontains 'hcinode01') { new-vm -Name HCINode01 -MemoryStartupBytes 32GB -BootDevice VHD -SwitchName hciNodeMgmtInternal -Path C:\diskMounts\ -VHDPath C:\diskmounts\hcinode01\hci2311.vhdx -Generation 2 }
-If ($existingVMs.name -notcontains 'hcinode02') { new-vm -Name HCINode02 -MemoryStartupBytes 32GB -BootDevice VHD -SwitchName hciNodeMgmtInternal -Path C:\diskMounts\ -VHDPath C:\diskmounts\hcinode02\hci2311.vhdx -Generation 2 }
+For ($i = 1; $i -le $hciNodeCount; $i++) {
+    $hciNodeName = "hcinode0$i"
+    $hciNodePath = "C:\diskMounts\$hciNodeName"
+
+    If ($existingVMs.name -notcontains $hciNodeName) { new-vm -Name $hciNodeName -MemoryStartupBytes 32GB -BootDevice VHD -SwitchName hciNodeMgmtInternal -Path C:\diskMounts\ -VHDPath "$hciNodePath\hci_os.vhdx" -Generation 2 }
+}
 
 # configure HCI node VMs
 log "Configuring HCI node VMs..."
@@ -236,21 +244,21 @@ $unattendSource = @'
 
 # inject updated sysp answer file into each HCI node disk
 log "Injecting updated sysprep answer file into each HCI node disk..."
-'hcinode01', 'hcinode02' | ForEach-Object {
-    $hciNodeName = $_
+For ($i = 1; $i -le $hciNodeCount; $i++) {
+    $hciNodeName = "hciNode$i"
     $hciProductKey = ''
 	
     Push-location c:\diskMounts\$_
         
     If (!(Test-Path -Path unattend_injected.status) -and (Get-VM -Name $_).State -eq 'Off') {
-        $mountedVolume = mount-vhd .\hci2311.vhdx -Passthru | get-disk | Get-Partition | get-volume | Where-Object FileSystemType -eq 'NTFS'
+        $mountedVolume = mount-vhd .\hci_os.vhdx -Passthru | get-disk | Get-Partition | get-volume | Where-Object FileSystemType -eq 'NTFS'
     
         $clone = $unattendSource.psobject.copy()
         $clone = $ExecutionContext.InvokeCommand.ExpandString($clone)
     
         Set-Content -Path "$($mountedVolume.DriveLetter):\unattend.xml" -Value $clone -Force
     
-        dismount-vhd .\hci2311.vhdx
+        dismount-vhd .\hci_os.vhdx
 	
         Set-Content 'unattend_injected.status' -Value 'Unattend.xml injected'
     }
@@ -260,8 +268,13 @@ log "Injecting updated sysprep answer file into each HCI node disk..."
 
 # start HCI node VMs
 log "Starting HCI node VMs..."
-Start-VM -Name hcinode01
-Start-VM -Name hcinode02
+try {
+    Get-VM | Start-VM
+}
+catch {
+    log "Failed to start HCI node VMs. $_"
+    Write-Error "Failed to start HCI node VMs. $_"
+}
 
 #wait for vms to boot
 log "Waiting for VMs to boot..."
