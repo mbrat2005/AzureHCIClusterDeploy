@@ -107,9 +107,10 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = {
       }
       dataDisks: [
         for diskNum in range(1, hciNodeCount): {
+          name: 'dataDisk${string(diskNum)}'
           createOption: 'Empty'
           diskSizeGB: 4096
-          lun: 0
+          lun: diskNum
           managedDisk: {
             storageAccountType: 'StandardSSD_LRS'
           }
