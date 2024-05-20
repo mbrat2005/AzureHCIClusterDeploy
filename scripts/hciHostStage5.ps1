@@ -91,7 +91,7 @@ If ($existingScopes.name -notcontains 'HCIMgmt') { Add-DhcpServerv4Scope -StartR
 
 log "Testing DC connectivity..."
 $count = 0
- While (!(Test-ADConnection) -and $count -lt 120) {
+While (!(Test-ADConnection) -and $count -lt 120) {
     Start-Sleep -Seconds 5
     log "Waiting for AD Web Services to be available..."
     $count++
@@ -119,7 +119,7 @@ Set-DhcpServerv4OptionValue -ScopeId 172.20.0.0 -DnsDomain hci.local -DnsServer 
 log "Creating HCI node VMs..."
 $existingVMs = Get-VM
 For ($i = 1; $i -le $hciNodeCount; $i++) {
-    $hciNodeName = "hcinode0$i"
+    $hciNodeName = "hcinode$i"
     $hciNodePath = "C:\diskMounts\$hciNodeName"
 
     If ($existingVMs.name -notcontains $hciNodeName) { new-vm -Name $hciNodeName -MemoryStartupBytes 32GB -BootDevice VHD -SwitchName hciNodeMgmtInternal -Path C:\diskMounts\ -VHDPath "$hciNodePath\hci_os.vhdx" -Generation 2 }
@@ -128,7 +128,7 @@ For ($i = 1; $i -le $hciNodeCount; $i++) {
 # configure HCI node VMs
 log "Configuring HCI node VMs..."
 Get-VM | Set-VMProcessor -ExposeVirtualizationExtensions $true -Count 16
-Get-VM | Get-VMNetworkAdapter -Name 'Network Adapter' | Rename-VMNetworkAdapter -NewName mgmt
+if (Get-VMNetworkAdapter -Name 'Network Adapter' -VMName * -ErrorAction SilentlyContinue) { Rename-VMNetworkAdapter -NewName mgmt -VMName * -Name 'Network Adapter' }
 Get-VM | Get-VMNetworkAdapter -Name 'mgmt' | Set-VMNetworkAdapter -DeviceNaming On
 
 # add additional NICs to HCI node VMs
@@ -144,9 +144,14 @@ ForEach ($existingVM in (Get-VM)) {
 # add disks to HCI node VMs
 log "Adding disks to HCI node VMs..."
 Foreach ($vm in (Get-VM)) {
-        (1..4) | ForEach-Object {
-        New-VHD -Path "C:\diskMounts\$($vm.Name)\hciNodeDisk$($_).vhdx" -SizeBytes 1TB -Dynamic
-        Add-VMHardDiskDrive -VMName $vm.Name -ControllerType SCSI -ControllerNumber 0 -ControllerLocation $_ -Path "C:\diskMounts\$($vm.Name)\hciNodeDisk$($_).vhdx"
+    (1..4) | ForEach-Object {
+        $diskPath = "C:\diskMounts\$($vm.Name)\hciNodeDisk$($_).vhdx"
+        If (!(Test-Path -path $diskPath)) {
+            New-VHD -Path $diskPath -SizeBytes 1TB -Dynamic
+        }
+        If ($VM.HardDrives.Path -notcontains $diskPath) {
+            Add-VMHardDiskDrive -VMName $vm.Name -ControllerType SCSI -ControllerNumber 0 -ControllerLocation $_ -Path $diskPath
+        }
     }
 }
 
@@ -248,9 +253,9 @@ For ($i = 1; $i -le $hciNodeCount; $i++) {
     $hciNodeName = "hciNode$i"
     $hciProductKey = ''
 	
-    Push-location c:\diskMounts\$_
+    Push-location c:\diskMounts\$hciNodeName
         
-    If (!(Test-Path -Path unattend_injected.status) -and (Get-VM -Name $_).State -eq 'Off') {
+    If (!(Test-Path -Path unattend_injected.status) -and (Get-VM -Name $hciNodeName).State -eq 'Off') {
         $mountedVolume = mount-vhd .\hci_os.vhdx -Passthru | get-disk | Get-Partition | get-volume | Where-Object FileSystemType -eq 'NTFS'
     
         $clone = $unattendSource.psobject.copy()
