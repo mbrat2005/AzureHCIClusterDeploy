@@ -310,6 +310,16 @@ resource runCommand7 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
     source: {
       script: loadTextContent('./scripts/hciHostStage7.ps1')
     }
+    parameters: [
+      {
+        name: 'hciNodeCount'
+        value: string(hciNodeCount)
+      }
+      {
+        name: 'resourceGroupName'
+        value: resourceGroup().name
+      }
+    ]
   }
   dependsOn: [runCommand6]
 }

@@ -4,8 +4,8 @@ param(
     $resourceGroupName,
 
     [Parameter()]
-    [String[]]
-    $hciNodeNames
+    [int]
+    $hciNodeCount
 
 )
 Function log {
@@ -23,6 +23,11 @@ Function log {
 }
 
 $ErrorActionPreference = 'Stop'
+
+$hciNodeNames = @()
+for ($i = 1; $i -le $hciNodeCount; $i++) {
+    $hciNodeNames += "hcinode$i"
+}
 
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 Install-Module -Name Az.ConnectedMachine -Force -AllowClobber -Scope CurrentUser -Repository PSGallery -ErrorAction SilentlyContinue
