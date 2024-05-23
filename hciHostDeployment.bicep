@@ -1,6 +1,6 @@
 param location string = 'westus3' // all resource except HCI Arc Nodes + HCI resources, which will be in eastus
 param vnetSubnetID string = '' // use to connect the HCI Azure Host VM to an existing VNET in the same region
-param useSpotVM bool = true // change to false to use regular priority VM
+param useSpotVM bool = false // change to false to use regular priority VM
 param hostVMSize string = 'Standard_E32bds_v5' // Azure VM size for the HCI Host VM - must support nested virtualization and have sufficient capacity for the HCI node VMs!
 param hciNodeCount int = 2 // number of Azure Stack HCI nodes to deploy
 param hciVHDXDownloadURL string = 'https://software-static.download.prss.microsoft.com/dbazure/888969d5-f34g-4e03-ac9d-1f9786c66749/25398.469.amd64fre.zn_release_svc_refresh.231004-1141_server_serverazurestackhcicor_en-us.vhdx'
