@@ -48,24 +48,24 @@ while (!$allExtensionsReady) {
     $allExtensionsReadyCheck = $true
     foreach ($arcMachine in $arcMachines) {
         $extensions = Get-AzConnectedMachineExtension -ResourceGroupName $resourceGroupName -MachineName $arcMachine.Name
-        if ($extensions.Type -notcontains 'TelemetryAndDiagnostics' -or $extensions.Type -notcontains 'DeviceManagementExtension' -or $extensions.Type -notcontains 'LcmController' -or $extensions.Type -notcontains 'EdgeRemoteSupport') {
+        if ($extensions.MachineExtensionType -notcontains 'TelemetryAndDiagnostics' -or $extensions.MachineExtensionType -notcontains 'DeviceManagementExtension' -or $extensions.MachineExtensionType -notcontains 'LcmController' -or $extensions.MachineExtensionType -notcontains 'EdgeRemoteSupport') {
             log "Waiting for extensions to be installed on HCI Arc Machine '$($arcMachine.Name)'..."
             $allExtensionsReadyCheck = $false
             continue
         }
-        elseIf (($extensionState = $extensions | Where-Object Type -eq 'TelemetryAndDiagnostics').ProvisioningState -ne 'Succeeded') {
+        elseIf (($extensionState = $extensions | Where-Object MachineExtensionType -eq 'TelemetryAndDiagnostics').ProvisioningState -ne 'Succeeded') {
             log "Waiting for TelemetryAndDiagnostics extension to be installed on HCI Arc Machine '$($arcMachine.Name)'. Current state: '$($extensionState.ProvisioningState)'..."
             $allExtensionsReadyCheck = $false
         }
-        elseIf (($extensionState = $extensions | Where-Object Type -eq 'DeviceManagementExtension').ProvisioningState -ne 'Succeeded') {
+        elseIf (($extensionState = $extensions | Where-Object MachineExtensionType -eq 'DeviceManagementExtension').ProvisioningState -ne 'Succeeded') {
             log "Waiting for DeviceManagementExtension extension to be installed on HCI Arc Machine '$($arcMachine.Name)'. Current state: '$($extensionState.ProvisioningState)'..."
             $allExtensionsReadyCheck = $false
         }
-        elseIf (($extensionState = $extensions | Where-Object Type -eq 'LcmController').ProvisioningState -ne 'Succeeded') {
+        elseIf (($extensionState = $extensions | Where-Object MachineExtensionType -eq 'LcmController').ProvisioningState -ne 'Succeeded') {
             log "Waiting for LcmController extension to be installed on HCI Arc Machine '$($arcMachine.Name)'. Current state: '$($extensionState.ProvisioningState)'..."
             $allExtensionsReadyCheck = $false
         }
-        elseIf (($extensionState = $extensions | Where-Object Type -eq 'EdgeRemoteSupport').ProvisioningState -ne 'Succeeded') {
+        elseIf (($extensionState = $extensions | Where-Object MachineExtensionType -eq 'EdgeRemoteSupport').ProvisioningState -ne 'Succeeded') {
             log "Waiting for EdgeRemoteSupport extension to be installed on HCI Arc Machine '$($arcMachine.Name)'. Current state: '$($extensionState.ProvisioningState)'..."
             $allExtensionsReadyCheck = $false
         }
@@ -74,5 +74,7 @@ while (!$allExtensionsReady) {
         }
     }
     $allExtensionsReady = $allExtensionsReadyCheck
-    Start-Sleep -Seconds 30
+    If (!$allExtensionsReady) {
+        log "waiting 30 seconds to check extensions again..."
+        Start-Sleep -Seconds 30}
 }
