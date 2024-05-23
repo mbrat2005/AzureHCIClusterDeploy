@@ -300,3 +300,16 @@ resource runCommand6 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
   }
   dependsOn: [runCommand5]
 }
+
+// waits for HCI extensions to be in succeeded state
+resource runCommand7 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' = {
+  parent: vm
+  location: location
+  name: 'runCommand7'
+  properties: {
+    source: {
+      script: loadTextContent('./scripts/hciHostStage7.ps1')
+    }
+  }
+  dependsOn: [runCommand6]
+}
