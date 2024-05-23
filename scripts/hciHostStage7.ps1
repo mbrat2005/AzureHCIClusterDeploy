@@ -24,6 +24,10 @@ Function log {
 
 $ErrorActionPreference = 'Stop'
 
+Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+Install-Module -Name Az.ConnectedMachine -Force -AllowClobber -Scope CurrentUser -Repository PSGallery -ErrorAction SilentlyContinue
+Set-PSRepository -Name PSGallery -InstallationPolicy Untrusted
+
 Login-AzAccount -Identity
 
 log "Waiting for HCI Arc Machines to exist in the resource group '$($resourceGroupName)'..."
