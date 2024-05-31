@@ -8,13 +8,14 @@ Function log {
     If (!(Test-Path -Path C:\temp)) {
         New-Item -Path C:\temp -ItemType Directory
     }
-    
+
     Write-Host $message
     Add-Content -Path $logPath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
 }
 
 $ErrorActionPreference = 'Stop'
 
+# check for reboot status file, reboot if needed
 If (Test-Path -path 'C:\Reboot2Required.status') {
     log "Reboot 2 is required"
 

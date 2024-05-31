@@ -22,7 +22,7 @@ Function log {
     If (!(Test-Path -Path C:\temp)) {
         New-Item -Path C:\temp -ItemType Directory
     }
-    
+
     Write-Host $message
     Add-Content -Path $logPath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
 }
@@ -81,7 +81,6 @@ If (!$?) {
     log $message
     Write-Error $message
 }
-    
 
 # create DHCP scopes
 log "Creating DHCP scopes..."
@@ -89,6 +88,7 @@ $existingScopes = Get-DhcpServerv4Scope
 If ($existingScopes.name -notcontains 'HCIComp') { Add-DhcpServerv4Scope -StartRange 10.0.0.10 -EndRange 10.0.0.250 -Name HCIComp -State Active -SubnetMask 255.255.255.0 }
 If ($existingScopes.name -notcontains 'HCIMgmt') { Add-DhcpServerv4Scope -StartRange 172.20.0.10 -EndRange 172.20.0.250 -Name HCIMgmt -State Active -SubnetMask 255.255.255.0 }
 
+# test DC connectivity before attempting to authorize DHCP server in AD
 log "Testing DC connectivity..."
 $count = 0
 While (!(Test-ADConnection) -and $count -lt 120) {
@@ -252,19 +252,19 @@ log "Injecting updated sysprep answer file into each HCI node disk..."
 For ($i = 1; $i -le $hciNodeCount; $i++) {
     $hciNodeName = "hciNode$i"
     $hciProductKey = ''
-	
+
     Push-location c:\diskMounts\$hciNodeName
-        
+
     If (!(Test-Path -Path unattend_injected.status) -and (Get-VM -Name $hciNodeName).State -eq 'Off') {
         $mountedVolume = mount-vhd .\hci_os.vhdx -Passthru | get-disk | Get-Partition | get-volume | Where-Object FileSystemType -eq 'NTFS'
-    
+
         $clone = $unattendSource.psobject.copy()
         $clone = $ExecutionContext.InvokeCommand.ExpandString($clone)
-    
+
         Set-Content -Path "$($mountedVolume.DriveLetter):\unattend.xml" -Value $clone -Force
-    
+
         dismount-vhd .\hci_os.vhdx
-	
+
         Set-Content 'unattend_injected.status' -Value 'Unattend.xml injected'
     }
 
@@ -274,6 +274,7 @@ For ($i = 1; $i -le $hciNodeCount; $i++) {
 # start HCI node VMs
 log "Starting HCI node VMs..."
 try {
+    $errorActionPreference = 'Stop'
     Get-VM | Start-VM
 }
 catch {

@@ -38,7 +38,7 @@ Function log {
     If (!(Test-Path -Path C:\temp)) {
         New-Item -Path C:\temp -ItemType Directory
     }
-    
+
     Write-Host $message
     Add-Content -Path $logPath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
 }
@@ -97,8 +97,6 @@ $arcInitializationJobs = Invoke-Command $sessions {
     Invoke-AzStackHciArcInitialization -SubscriptionID $subscriptionId -ResourceGroup $resourceGroupName -TenantID $tenantId -Cloud AzureCloud -AccountID $accountName -ArmAccessToken $t -Region $location
 } -AsJob -ArgumentList $t,$subscriptionId, $resourceGroupName, $tenantId, $location, $accountName
 
-log "Waiting for Azure Arc initialization to complete on nodes..."
-$arcInitJobsOut = ($arcInitializationJobs | Receive-Job -Keep | Out-String)
-$arcInitJobsOut
-log $arcInitJobsOut
+log "Waiting up to 30 minutes for Azure Arc initialization to complete on nodes..."
+
 $arcInitializationJobs | Wait-Job -Timeout 1800

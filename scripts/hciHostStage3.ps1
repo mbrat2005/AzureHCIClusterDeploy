@@ -18,13 +18,13 @@ Function log {
     If (!(Test-Path -Path C:\temp)) {
         New-Item -Path C:\temp -ItemType Directory
     }
-    
+
     Write-Host $message
     Add-Content -Path $logPath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
 }
 
 $ErrorActionPreference = 'Stop'
-    
+
 # download HCI VHDX
 log "Downloading HCI VHDX..."
 mkdir c:\ISOs
@@ -42,13 +42,13 @@ For ($i = 0; $i -lt $hciNodeCount; $i++) {
 log "Formatting and mounting disks..."
 $count = 0
 $rawDisks = Get-Disk | Where-Object PartitionStyle -eq 'RAW'
-$rawDisks | 
-Initialize-Disk -PartitionStyle GPT -PassThru | 
-New-Partition -UseMaximumSize -AssignDriveLetter:$false | 
-Format-Volume -FileSystem NTFS | 
-Get-Partition | 
-Where-Object { $_.type -ne 'Reserved' } | 
-ForEach-Object { $count++; mountvol c:\diskMounts\HCINode$count $_.accesspaths[0] }
+$rawDisks |
+Initialize-Disk -PartitionStyle GPT -PassThru |
+  New-Partition -UseMaximumSize -AssignDriveLetter:$false |
+  Format-Volume -FileSystem NTFS |
+  Get-Partition |
+  Where-Object { $_.type -ne 'Reserved' } |
+    ForEach-Object { $count++; mountvol c:\diskMounts\HCINode$count $_.accesspaths[0] }
 
 log "Copying VHDX to mount points..."
 For ($i = 0; $i -lt $hciNodeCount; $i++) {
@@ -77,6 +77,7 @@ log "Adding DNS forwarders..."
 Import-Module 'C:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsServer\DnsServer.psd1'
 Add-DnsServerForwarder -IPAddress 8.8.8.8
 
+# create reboot status file
 If (Test-Path -path 'C:\Reboot2Completed.status') {
     log "Reboot has already been completed, skipping..."
 }

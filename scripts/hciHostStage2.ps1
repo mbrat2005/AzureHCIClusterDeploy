@@ -7,13 +7,14 @@ Function log {
     If (!(Test-Path -Path C:\temp)) {
         New-Item -Path C:\temp -ItemType Directory
     }
-    
+
     Write-Host $message
     Add-Content -Path $logPath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
 }
 
 $ErrorActionPreference = 'Stop'
 
+# check for reboot status file, reboot if needed
 If (Test-Path -path 'C:\Reboot1Required.status') {
     log "Reboot 1 is required"
 
@@ -26,8 +27,6 @@ If (Test-Path -path 'C:\Reboot1Required.status') {
     $principal = New-ScheduledTaskPrincipal -UserId 'NT AUTHORITY\SYSTEM' -LogonType ServiceAccount
     $task = New-ScheduledTask -Action $action -Description 'Reboot 1' -Trigger $trigger -Principal $principal
     Register-ScheduledTask -TaskName 'Reboot1' -InputObject $task
-
-    Start-Sleep -Seconds 75
 }
 ElseIf (Test-Path -path 'C:\Reboot1Initiated.status') {
     log "Reboot 1 has been initiated and now completed"

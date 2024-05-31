@@ -1,20 +1,17 @@
-param location string = 'westus3' // all resource except HCI Arc Nodes + HCI resources, which will be in eastus
+param location string // all resource except HCI Arc Nodes + HCI resources, which will be in eastus
 param vnetSubnetID string = '' // use to connect the HCI Azure Host VM to an existing VNET in the same region
 param useSpotVM bool = false // change to false to use regular priority VM
 param hostVMSize string = 'Standard_E32bds_v5' // Azure VM size for the HCI Host VM - must support nested virtualization and have sufficient capacity for the HCI node VMs!
 param hciNodeCount int = 2 // number of Azure Stack HCI nodes to deploy
-param hciVHDXDownloadURL string = 'https://software-static.download.prss.microsoft.com/dbazure/888969d5-f34g-4e03-ac9d-1f9786c66749/25398.469.amd64fre.zn_release_svc_refresh.231004-1141_server_serverazurestackhcicor_en-us.vhdx'
-param adminUsername string = 'admin-hci'
+param hciVHDXDownloadURL string = 'https://azurestackreleases.download.prss.microsoft.com/dbazure/AzureStackHCI/OS-Composition/10.2405.0.3018/AZURESTACKHCI.25398.469.LCM_2405.0.3018.x64.en-us.iso'
+param localAdminUsername string = 'admin-hci'
 @secure()
-param adminPassword string
+param localAdminPassword string
 
 // vm managed identity used for HCI Arc onboarding
 resource userAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' = {
   location: location
   name: 'hciHost01Identity'
-  properties: {
-    tenantId: subscription().tenantId
-  }
 }
 
 // grant identity owner permissions on the subscription
@@ -65,7 +62,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2020-11-01' = {
   }
 }
 
-// Azure Stack HCI Host VM - 
+// Azure Stack HCI Host VM -
 resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = {
   location: location
   name: 'hciHost01'
@@ -120,8 +117,8 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = {
       diskControllerType: 'SCSI'
     }
     osProfile: {
-      adminPassword: adminPassword
-      adminUsername: adminUsername
+      adminPassword: localAdminPassword
+      adminUsername: localAdminUsername
       computerName: 'hciHost01'
       windowsConfiguration: {
         provisionVMAgent: true
@@ -177,7 +174,7 @@ resource wait1 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   properties: {
     azPowerShellVersion: '3.0'
     scriptContent: 'Start-Sleep -Seconds 90'
-    retentionInterval: 'PT60M'
+    retentionInterval: 'PT6H'
   }
   dependsOn: [runCommand2]
 }
@@ -226,7 +223,7 @@ resource wait2 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   properties: {
     azPowerShellVersion: '3.0'
     scriptContent: 'Start-Sleep -Seconds 300 #enough time for AD start-up'
-    retentionInterval: 'PT60M'
+    retentionInterval: 'PT6H'
   }
   dependsOn: [runCommand4]
 }
@@ -243,11 +240,11 @@ resource runCommand5 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
     parameters: [
       {
         name: 'adminUsername'
-        value: adminUsername
+        value: localAdminUsername
       }
       {
         name: 'adminPw'
-        value: adminPassword
+        value: localAdminPassword
       }
       {
         name: 'hciNodeCount'
@@ -290,11 +287,11 @@ resource runCommand6 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
       }
       {
         name: 'adminUsername'
-        value: adminUsername
+        value: localAdminPassword
       }
       {
         name: 'adminPw'
-        value: adminPassword
+        value: localAdminPassword
       }
     ]
   }
