@@ -1,9 +1,11 @@
-param location string // all resource except HCI Arc Nodes + HCI resources, which will be in eastus
+param location string // all resource except HCI Arc Nodes + HCI resources
 param vnetSubnetID string = '' // use to connect the HCI Azure Host VM to an existing VNET in the same region
 param useSpotVM bool = false // change to false to use regular priority VM
 param hostVMSize string = 'Standard_E32bds_v5' // Azure VM size for the HCI Host VM - must support nested virtualization and have sufficient capacity for the HCI node VMs!
 param hciNodeCount int = 2 // number of Azure Stack HCI nodes to deploy
-param hciVHDXDownloadURL string = 'https://azurestackreleases.download.prss.microsoft.com/dbazure/AzureStackHCI/OS-Composition/10.2405.0.3018/AZURESTACKHCI.25398.469.LCM_2405.0.3018.x64.en-us.iso'
+// specify either a VHDX or ISO download URL; if both are specified, the VHDX download URL will be used
+param hciVHDXDownloadURL string = ''
+param hciISODownloadURL string = 'https://azurestackreleases.download.prss.microsoft.com/dbazure/AzureStackHCI/OS-Composition/10.2405.0.3018/AZURESTACKHCI.25398.469.LCM_2405.0.3018.x64.en-us.iso'
 param localAdminUsername string = 'admin-hci'
 @secure()
 param localAdminPassword string
@@ -38,6 +40,16 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-11-01' = if (vnetSubnetID 
         name: 'subnet01'
         properties: {
           addressPrefix: '10.0.0.0/24'
+          serviceEndpoints: [
+            {
+              service: 'Microsoft.Storage'
+              locations: [location]
+            }
+            {
+              service: 'Microsoft.KeyVault'
+              locations: [location]
+            }
+          ]
         }
       }
     ]
@@ -150,6 +162,7 @@ resource runCommand1 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
     source: {
       script: loadTextContent('./scripts/hciHostStage1.ps1')
     }
+    treatFailureAsDeploymentFailure: true
   }
 }
 
@@ -162,6 +175,7 @@ resource runCommand2 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
     source: {
       script: loadTextContent('./scripts/hciHostStage2.ps1')
     }
+    treatFailureAsDeploymentFailure: true
   }
   dependsOn: [runCommand1]
 }
@@ -194,10 +208,15 @@ resource runCommand3 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
         value: hciVHDXDownloadURL
       }
       {
+        name: 'hciISODownloadURL'
+        value: hciISODownloadURL
+      }
+      {
         name: 'hciNodeCount'
         value: string(hciNodeCount)
       }
     ]
+    treatFailureAsDeploymentFailure: true
   }
   dependsOn: [wait1]
 }
@@ -211,6 +230,7 @@ resource runCommand4 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
     source: {
       script: loadTextContent('./scripts/hciHostStage4.ps1')
     }
+    treatFailureAsDeploymentFailure: true
   }
   dependsOn: [runCommand3]
 }
@@ -243,14 +263,17 @@ resource runCommand5 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
         value: localAdminUsername
       }
       {
-        name: 'adminPw'
-        value: localAdminPassword
-      }
-      {
         name: 'hciNodeCount'
         value: string(hciNodeCount)
       }
     ]
+    protectedParameters: [
+      {
+        name: 'adminPw'
+        value: localAdminPassword
+      }
+    ]
+    treatFailureAsDeploymentFailure: true
   }
   dependsOn: [wait2]
 }
@@ -287,13 +310,16 @@ resource runCommand6 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
       }
       {
         name: 'adminUsername'
-        value: localAdminPassword
+        value: localAdminUsername
       }
+    ]
+    protectedParameters: [
       {
         name: 'adminPw'
         value: localAdminPassword
       }
     ]
+    treatFailureAsDeploymentFailure: true
   }
   dependsOn: [runCommand5]
 }
@@ -317,6 +343,9 @@ resource runCommand7 'Microsoft.Compute/virtualMachines/runCommands@2024-03-01' 
         value: resourceGroup().name
       }
     ]
+    treatFailureAsDeploymentFailure: true
   }
   dependsOn: [runCommand6]
 }
+
+output vnetSubnetId string = vnetSubnetID == '' ? vnet.properties.subnets[0].id : vnetSubnetID

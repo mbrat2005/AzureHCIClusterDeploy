@@ -42,10 +42,10 @@ While (($arcMachines = Get-AzConnectedMachine -ResourceGroupName $resourceGroupN
   Start-Sleep -Seconds 30
 }
 
-log 'Waiting up to one hour for HCI Arc Machine extensions to be installed...'
+log 'Waiting up to two hours for HCI Arc Machine extensions to be installed...'
 $timer = [System.Diagnostics.Stopwatch]::StartNew()
 $allExtensionsReady = $false
-while (!$allExtensionsReady -and $timer.Elapsed.TotalMinutes -lt 60) {
+while (!$allExtensionsReady -and $timer.Elapsed.TotalMinutes -lt 120) {
   $allExtensionsReadyCheck = $true
   foreach ($arcMachine in $arcMachines) {
     $extensions = Get-AzConnectedMachineExtension -ResourceGroupName $resourceGroupName -MachineName $arcMachine.Name
